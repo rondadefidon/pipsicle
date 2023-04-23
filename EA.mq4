@@ -27,24 +27,24 @@ enum ENUM_TYPE_SLTP
    fromStart = 0, // Stop loss from the start
    onOrderOpen = 1 // Stop loss once the market order is opened
   };
-extern string TimeSettings = "--------------------------------"; // Separator line
+extern string TimeSettings = "--------------------------------"; // TimeSettings
 extern string StartRange = "14:30"; // Start time of the range
 extern string EndRange = "15:30"; // End time of the range
 extern string StopTrade = "17:00"; // Stop trading time
 
-extern string OrderSettings = "--------------------------------"; // Separator line
+extern string OrderSettings = "--------------------------------"; // OrderSettings
 extern ENUM_ORDERS TypeOrders = pending; // Type of orders: pending or market
 extern ENUM_TYPE_SLTP TypeSL = fromStart; // Type of stop loss: from the start or when the order is opened
 extern bool PriceBidBuys = false; // Use bid price for buy orders
 
-extern string TradeSettings = "--------------------------------"; // Separator line
+extern string TradeSettings = "--------------------------------"; // TradeSettings
 extern double Lots = 0.1; // Lot size
 extern int SL = 2000; // Stop loss in pips
 extern int TP = 12000; // Take profit in pips
-extern double ProfitTarget = 0; // Take profit as a percentage of the account balance
+extern double ProfitTarget = 0; // Monthly Profit Target %
 extern int MaxDailyOrder = 3; // Maximum number of orders per day
 
-extern string StopManagement = "--------------------------------"; // Separator line
+extern string StopManagement = "--------------------------------"; // StopManagement
 extern bool UseBreakEven = false; // Enable break-even functionality
 extern int BreakEven = 0; // Break-even level in pips
 extern int SLBreakEven = 0; // Stop loss level after break-even
@@ -53,9 +53,9 @@ extern int TrailStart = 2000; // Trailing stop start level in pips
 extern int TrailStop = 2000; // Trailing stop level in pips
 extern int TrailStep = 2000; // Trailing stop step in pips
 
-extern string AdditionalSettings = "--------------------------------"; // Separator line
-extern bool UseSpreadProtect; // Enable spread protection
-extern int SpreadMax = 15; // Maximum allowed spread in points
+extern string AdditionalSettings = "--------------------------------"; // AdditionalSettings
+extern int UseSpreadProtect = true; // Enable Spread Protection
+extern int SpreadMax = 200; // Maximum allowed spread in points
 extern bool Display = true; // Enable or disable the display of information on the chart
 extern string TradeComment; // Comment for the placed trades
 
@@ -84,11 +84,11 @@ public:
 string Is_0170;
 string Is_0080;
 string Is_0180;
-bool returned_b;
+bool returnedBool;
 bool Gb_0000;
 bool Gb_0001;
-int Ii_0064;
-long returned_l;
+int orderResult;
+long returnedLong; // not used
 string Is_0090;
 string Is_00A0;
 string Is_00B0;
@@ -299,7 +299,7 @@ int init()
    Is_0038 = "======FILTERS===================";
    Is_0048 = "======OTHER SETTINGS============";
    Is_0058 = "======NOTIFICATIONS=============";
-   Ii_0064 = 0;
+   orderResult = 0;
    Ii_0068 = 0;
    Ib_016C = false;
    Ib_016D = true;
@@ -376,7 +376,7 @@ int init()
    Is_0140 = strChartIDPrefix + "Month";
    Is_0150 = strChartIDPrefix + "MonthClose";
    EventSetTimer(1);
-   func_1144();
+   setPipsicleIndexKillerLabel();
    Li_FFFC = 0;
 
    return Li_FFFC;
@@ -478,7 +478,7 @@ void OnTick()
       Il_05D8 = iTime(_Symbol, _Period, 0);
       Ib_016C = true;
      }
-   func_1151();
+   modifyOrdersToSL();
    func_1146();
    if(Display)
      {
@@ -490,7 +490,7 @@ void OnTick()
      }
    if(UseBreakEven)
      {
-      func_1154(BreakEven, SLBreakEven);
+      modifyOrdersToBreakeven(BreakEven, SLBreakEven);
      }
    if(func_1139())
       return;
@@ -691,7 +691,7 @@ void OnTick()
       do
         {
          if(OrderSelect((Gi_000A - 1), 0, 0) == true
-            && OrderMagicNumber() == Ii_0064 && OrderType() != OP_BUY && OrderType() != OP_SELL)
+            && OrderMagicNumber() == orderResult && OrderType() != OP_BUY && OrderType() != OP_SELL)
            {
             Gi_000B = func_1097(OrderType());
             if(!OrderDelete(OrderTicket(), Gi_000B))
@@ -761,7 +761,7 @@ void OnTick()
          return;
       do
         {
-         if(OrderSelect((Gi_000D - 1), 0, 0) == true && OrderMagicNumber() == Ii_0064 && OrderType() != OP_BUY && OrderType() != OP_SELL)
+         if(OrderSelect((Gi_000D - 1), 0, 0) == true && OrderMagicNumber() == orderResult && OrderType() != OP_BUY && OrderType() != OP_SELL)
            {
             Gi_000E = func_1097(OrderType());
             if(!OrderDelete(OrderTicket(), Gi_000E))
@@ -883,7 +883,7 @@ void OnTick()
         {
          Gd_0018 = Ask;
         }
-      Li_FFFC = func_1084(Lots, 0, NormalizeDouble(Gd_0018, _Digits), Gi_0017, TP, Ii_0064, tmp_str0020, 16711680);
+      Li_FFFC = func_1084(Lots, 0, NormalizeDouble(Gd_0018, _Digits), Gi_0017, TP, orderResult, tmp_str0020, 16711680);
       if(Li_FFFC > 0)
         {
          tmp_str0022 = (string)TimeCurrent();
@@ -1107,7 +1107,7 @@ void OnTick()
      {
       Gd_0023 = Bid;
      }
-   Li_FFF8 = func_1084(Lots, 1, NormalizeDouble(Gd_0023, _Digits), Gi_0022, TP, Ii_0064, tmp_str0037, 255);
+   Li_FFF8 = func_1084(Lots, 1, NormalizeDouble(Gd_0023, _Digits), Gi_0022, TP, orderResult, tmp_str0037, 255);
    if(Li_FFF8 <= 0)
       return;
    tmp_str0039 = (string)TimeCurrent();
@@ -1314,7 +1314,7 @@ void OnDeinit(const int reason)
 
    if(reason != 5 && reason != 6 && reason != 7 && reason != 3 && reason != 9)
      {
-      chartIDStringTmp = (string)Ii_0064;
+      chartIDStringTmp = (string)orderResult;
       Gi_0000 = 0;
       if(GlobalVariablesTotal() > 0)
         {
@@ -1386,7 +1386,7 @@ bool checkOrders()
      {
       do
         {
-         if(OrderSelect((Gi_0003 - 1), 0, 0) == true && OrderMagicNumber() == Ii_0064)
+         if(OrderSelect((Gi_0003 - 1), 0, 0) == true && OrderMagicNumber() == orderResult)
            {
             if(Gi_0002 == 0)
               {
@@ -1535,7 +1535,7 @@ bool func_1083()
      {
       do
         {
-         if(OrderSelect((Gi_0003 - 1), 0, 0) == true && OrderMagicNumber() == Ii_0064)
+         if(OrderSelect((Gi_0003 - 1), 0, 0) == true && OrderMagicNumber() == orderResult)
            {
             if(Gi_0002 == 0)
               {
@@ -1828,7 +1828,7 @@ void func_1086()
      {
       do
         {
-         if(OrderSelect((Gi_0003 - 1), 0, 0) == true && OrderMagicNumber() == Ii_0064)
+         if(OrderSelect((Gi_0003 - 1), 0, 0) == true && OrderMagicNumber() == orderResult)
            {
             Gd_0004 = OrderProfit();
             Gd_0004 = (Gd_0004 + OrderCommission());
@@ -1848,7 +1848,7 @@ void func_1086()
      {
       do
         {
-         if(OrderSelect((Gi_0005 - 1), 0, 1) == true && OrderMagicNumber() == Ii_0064)
+         if(OrderSelect((Gi_0005 - 1), 0, 1) == true && OrderMagicNumber() == orderResult)
            {
             Gl_0006 = OrderOpenTime();
             tmp_str0001 = TimeToString(TimeCurrent(), 1);
@@ -1875,7 +1875,7 @@ void func_1086()
      {
       do
         {
-         if(OrderSelect((Gi_0007 - 1), 0, 0) == true && OrderMagicNumber() == Ii_0064)
+         if(OrderSelect((Gi_0007 - 1), 0, 0) == true && OrderMagicNumber() == orderResult)
            {
             tmp_str0003 = OrderComment();
             if(StringFind(tmp_str0003, "to #", 0) < 0)
@@ -1958,60 +1958,60 @@ void func_1086()
 //|            Return Timeframe                                      |
 //+------------------------------------------------------------------+
 string getTimeframeString(int period)
-{
+  {
    string timeFrame;
 
    if(period >= 1 && period <= 43200)
-   {
+     {
       if(period == 1)
-      {
+        {
          timeFrame = "M1";
          return timeFrame;
-      }
+        }
       if(period == 5)
-      {
+        {
          timeFrame = "M5";
          return timeFrame;
-      }
+        }
       if(period == 15)
-      {
+        {
          timeFrame = "M15";
          return timeFrame;
-      }
+        }
       if(period == 30)
-      {
+        {
          timeFrame = "M30";
          return timeFrame;
-      }
+        }
       if(period == 60)
-      {
+        {
          timeFrame = "H1";
          return timeFrame;
-      }
+        }
       if(period == 240)
-      {
+        {
          timeFrame = "H4";
          return timeFrame;
-      }
+        }
       if(period == 1440)
-      {
+        {
          timeFrame = "D1";
          return timeFrame;
-      }
+        }
       if(period == 10080)
-      {
+        {
          timeFrame = "W1";
          return timeFrame;
-      }
+        }
       if(period == 43200)
-      {
+        {
          timeFrame = "MN";
          return timeFrame;
-      }
-   }
+        }
+     }
    timeFrame = getTimeframeString(_Period);
    return timeFrame;
-}
+  }
 
 //+------------------------------------------------------------------+
 //|                                                                  |
@@ -2198,7 +2198,7 @@ void func_1100()
      {
       do
         {
-         if(OrderSelect((Gi_0000 - 1), 0, 0) == true && OrderMagicNumber() == Ii_0064)
+         if(OrderSelect((Gi_0000 - 1), 0, 0) == true && OrderMagicNumber() == orderResult)
            {
             if(OrderType() == OP_BUY || OrderType() == OP_SELL)
               {
@@ -2223,7 +2223,7 @@ void func_1100()
         {
          do
            {
-            if(OrderSelect((Li_FFFC - 1), 0, 0) == true && OrderMagicNumber() == Ii_0064)
+            if(OrderSelect((Li_FFFC - 1), 0, 0) == true && OrderMagicNumber() == orderResult)
               {
                if(OrderType() != OP_BUY && OrderType() != OP_SELL)
                  {
@@ -2282,7 +2282,7 @@ void func_1100()
         {
          do
            {
-            if(OrderSelect((Gi_0003 - 1), 0, 0) == true && OrderMagicNumber() == Ii_0064)
+            if(OrderSelect((Gi_0003 - 1), 0, 0) == true && OrderMagicNumber() == orderResult)
               {
                if(OrderType() == OP_BUY || OrderType() == OP_SELL)
                  {
@@ -2639,7 +2639,7 @@ void func_1128()
            {
             do
               {
-               if(OrderSelect((Gi_0003 - 1), 0, 0) == true && OrderMagicNumber() == Ii_0064)
+               if(OrderSelect((Gi_0003 - 1), 0, 0) == true && OrderMagicNumber() == orderResult)
                  {
                   if(Gi_0002 == 0)
                     {
@@ -2734,7 +2734,7 @@ void func_1128()
      {
       do
         {
-         if(OrderSelect((Gi_0009 - 1), 0, 0) == true && OrderMagicNumber() == Ii_0064)
+         if(OrderSelect((Gi_0009 - 1), 0, 0) == true && OrderMagicNumber() == orderResult)
            {
             if(Gi_0008 == 0)
               {
@@ -2824,7 +2824,7 @@ bool func_1135()
      {
       do
         {
-         if(OrderSelect((Gi_0001 - 1), 0, 1) == true && OrderMagicNumber() == Ii_0064)
+         if(OrderSelect((Gi_0001 - 1), 0, 1) == true && OrderMagicNumber() == orderResult)
            {
             Gl_0002 = OrderOpenTime();
             tmp_str0000 = TimeToString(TimeCurrent(), 1);
@@ -2851,7 +2851,7 @@ bool func_1135()
      {
       do
         {
-         if(OrderSelect((Gi_0003 - 1), 0, 0) == true && OrderMagicNumber() == Ii_0064)
+         if(OrderSelect((Gi_0003 - 1), 0, 0) == true && OrderMagicNumber() == orderResult)
            {
             tmp_str0002 = OrderComment();
             if(StringFind(tmp_str0002, "to #", 0) < 0)
@@ -2917,7 +2917,7 @@ bool func_1139()
      {
       do
         {
-         if(OrderSelect((Gi_0000 - 1), 0, 1) == true && OrderMagicNumber() == Ii_0064)
+         if(OrderSelect((Gi_0000 - 1), 0, 1) == true && OrderMagicNumber() == orderResult)
            {
             Gl_0001 = OrderOpenTime();
             tmp_str0000 = TimeToString(TimeCurrent(), 1);
@@ -2954,7 +2954,7 @@ bool func_1139()
         {
          do
            {
-            if(OrderSelect((Gi_0004 - 1), 0, 0) == true && OrderMagicNumber() == Ii_0064 && OrderType() != OP_BUY && OrderType() != OP_SELL)
+            if(OrderSelect((Gi_0004 - 1), 0, 0) == true && OrderMagicNumber() == orderResult && OrderType() != OP_BUY && OrderType() != OP_SELL)
               {
                Gi_0005 = func_1097(OrderType());
                if(!OrderDelete(OrderTicket(), Gi_0005))
@@ -3087,7 +3087,7 @@ void func_1143(int Fa_i_00, int Fa_i_01, int Fa_i_02)
       return;
    do
      {
-      if(OrderSelect(Li_FFFC, 0, 0) == true && OrderMagicNumber() == Ii_0064)
+      if(OrderSelect(Li_FFFC, 0, 0) == true && OrderMagicNumber() == orderResult)
         {
          if(OrderType() == OP_BUY)
            {
@@ -3210,9 +3210,8 @@ void func_1143(int Fa_i_00, int Fa_i_01, int Fa_i_02)
 //+------------------------------------------------------------------+
 //|                                                                  |
 //+------------------------------------------------------------------+
-void func_1144()
-  {
-   string tmp_str0000;
+void setPipsicleIndexKillerLabel() {
+   string labelName;
 
    ChartSetInteger(0, 21, 3283968);
    ChartSetInteger(0, 22, 16777215);
@@ -3223,31 +3222,31 @@ void func_1144()
    ChartSetInteger(0, 26, 255);
    ChartSetInteger(0, 2, 1);
    ChartSetInteger(0, 0, 1);
-   tmp_str0000 = "EAPASSING";
-   if(ObjectFind(0, tmp_str0000) >= 0)
-     {
-      ObjectDelete(0, tmp_str0000);
-     }
-   if(!ObjectCreate(0, tmp_str0000, OBJ_LABEL, 0, 0, 0))
+   labelName = "Pipsicle Index Killer";
+   if(ObjectFind(0, labelName) >= 0) {
+      ObjectDelete(0, labelName);
+   }
+   if(!ObjectCreate(0, labelName, OBJ_LABEL, 0, 0, 0)) {
       return;
-   Gl_0000 = ChartGetInteger(0, 106, 0) / 2;
-   Gi_0000 = (int)Gl_0000;
-   ObjectSetInteger(0, tmp_str0000, 102, Gi_0000);
-   ObjectSetInteger(0, tmp_str0000, 103, 5);
-   ObjectSetInteger(0, tmp_str0000, 101, 3);
-   ObjectSetString(0, tmp_str0000, 999, "Pipsicle Index Killer  ");
-   ObjectSetString(0, tmp_str0000, 1001, "Arial");
-   ObjectSetInteger(0, tmp_str0000, 100, 10);
-   ObjectSetDouble(0, tmp_str0000, 13, 0);
-   ObjectSetInteger(0, tmp_str0000, 1011, 3);
-   ObjectSetInteger(0, tmp_str0000, 6, 14917376);
-   ObjectSetInteger(0, tmp_str0000, 9, 0);
-   ObjectSetInteger(0, tmp_str0000, 1000, 0);
-   ObjectSetInteger(0, tmp_str0000, 17, 0);
-   ObjectSetInteger(0, tmp_str0000, 208, 1);
-   ObjectSetInteger(0, tmp_str0000, 207, 0);
+   }
+   double labelHalfWidth = (double)ChartGetInteger(0, 106, 0) / 2.0;
+   int labelWidth = (int)labelHalfWidth;
+   ObjectSetInteger(0, labelName, 102, labelWidth);
+   ObjectSetInteger(0, labelName, 103, 5);
+   ObjectSetInteger(0, labelName, 101, 3);
+   ObjectSetString(0, labelName, 999, "Pipsicle Index Killer");
+   ObjectSetString(0, labelName, 1001, "Arial");
+   ObjectSetInteger(0, labelName, 100, 10);
+   ObjectSetDouble(0, labelName, 13, 0);
+   ObjectSetInteger(0, labelName, 1011, 3);
+    ObjectSetInteger(0, labelName, 6, 0xFFFFFF); // Set label color to white
+   ObjectSetInteger(0, labelName, 9, 0);
+   ObjectSetInteger(0, labelName, 1000, 0);
+   ObjectSetInteger(0, labelName, 17, 0);
+   ObjectSetInteger(0, labelName, 208, 1);
+   ObjectSetInteger(0, labelName, 207, 0);
+}
 
-  }
 
 //+------------------------------------------------------------------+
 //|                                                                  |
@@ -3515,39 +3514,39 @@ void func_1146()
   }
 
 //+------------------------------------------------------------------+
-//|                                                                  |
+//|                Modify Orders To Stop Loss                        |
 //+------------------------------------------------------------------+
-void func_1151()
+void modifyOrdersToSL()
   {
-   string tmp_str0000;
-   string tmp_str0001;
-   string tmp_str0002;
-   string tmp_str0003;
-   int Li_FFFC;
-   double Ld_FFF0;
+   string errorMessage;
+   string orderMessage;
+   string symbolTimeframe;
+   string popupMessage;
+   int totalOrders;
+   double newStopLoss;
 
    if(TypeSL == 0)
       return;
    if(SL == 0)
       return;
-   Li_FFFC = OrdersTotal();
-   if(Li_FFFC < 0)
+   totalOrders = OrdersTotal();
+   if(totalOrders < 0)
       return;
    do
      {
-      if(OrderSelect((Li_FFFC - 1), 0, 0) == true && OrderMagicNumber() == Ii_0064)
+      if(OrderSelect((totalOrders - 1), 0, 0) == true && OrderMagicNumber() == orderResult)
         {
          if(OrderType() == OP_BUY || OrderType() == OP_SELL)
            {
 
-            Ld_FFF0 = 0;
+            newStopLoss = 0;
             if(OrderType() == OP_BUY)
               {
                Gd_0000 = OrderOpenPrice();
-               Ld_FFF0 = NormalizeDouble((Gd_0000 - NormalizeDouble((SL * _Point), _Digits)), _Digits);
+               newStopLoss = NormalizeDouble((Gd_0000 - NormalizeDouble((SL * _Point), _Digits)), _Digits);
                if((OrderStopLoss() != 0))
                  {
-                  if(OrderStopLoss() >= Ld_FFF0)
+                  if(OrderStopLoss() >= newStopLoss)
                      continue;
                  }
               }
@@ -3555,187 +3554,194 @@ void func_1151()
               {
                if(OrderType() == OP_SELL)
                  {
-                  Gd_0001 = OrderOpenPrice();
-                  Ld_FFF0 = NormalizeDouble((Gd_0001 + NormalizeDouble((SL * _Point), _Digits)), _Digits);
+                  Gd_0000 = OrderOpenPrice();
+                  newStopLoss = NormalizeDouble((Gd_0000 + NormalizeDouble((SL * _Point), _Digits)), _Digits);
                   if((OrderStopLoss() != 0))
                     {
-                     if(OrderStopLoss() <= Ld_FFF0)
+                     if(OrderStopLoss() <= newStopLoss)
                         continue;
                     }
                  }
               }
-            if(OrderModify(OrderTicket(), OrderOpenPrice(), Ld_FFF0, OrderTakeProfit(), OrderExpiration(), 4294967295) != true)
+            if(OrderModify(OrderTicket(), OrderOpenPrice(), newStopLoss, OrderTakeProfit(), OrderExpiration(), 4294967295) != true)
               {
-               tmp_str0000 = (string)OrderTicket();
-               tmp_str0000 = "Error modifying order " + tmp_str0000;
-               tmp_str0000 = tmp_str0000 + ". Error: ";
-               tmp_str0000 = tmp_str0000 + ErrorDescription(GetLastError());
-               tmp_str0001 = tmp_str0000;
-               Is_0070 = tmp_str0000;
-               tmp_str0003 = _Symbol + "(";
-               tmp_str0003 = tmp_str0003 + getTimeframeString(_Period);
-               tmp_str0003 = tmp_str0003 + ")";
-               tmp_str0003 = tmp_str0003 + ": ";
-               tmp_str0003 = tmp_str0003 + tmp_str0000;
-               tmp_str0002 = tmp_str0003;
+               errorMessage = (string)OrderTicket();
+               errorMessage = "Error modifying order " + errorMessage;
+               errorMessage = errorMessage + ". Error: ";
+               errorMessage = errorMessage + ErrorDescription(GetLastError());
+               orderMessage = errorMessage;
+               Is_0070 = errorMessage;
+               symbolTimeframe = _Symbol + "(";
+               symbolTimeframe = symbolTimeframe + getTimeframeString(_Period);
+               symbolTimeframe = symbolTimeframe + ")";
+               symbolTimeframe = symbolTimeframe + ": ";
+               symbolTimeframe = symbolTimeframe + errorMessage;
+               popupMessage = symbolTimeframe;
                if(PopupAlert)
                  {
-                  Alert(tmp_str0002);
+                  Alert(popupMessage);
                  }
                else
                  {
-                  Print(tmp_str0001);
+                  Print(orderMessage);
                  }
                if(PushAlert)
                  {
-                  SendNotification(tmp_str0002);
+                  SendNotification(popupMessage);
                  }
                if(EmailAlert)
                  {
-                  SendMail(tmp_str0002, tmp_str0001);
+                  SendMail(popupMessage, orderMessage);
                  }
               }
            }
         }
-      Li_FFFC = Li_FFFC - 1;
+      totalOrders = totalOrders - 1;
      }
-   while(Li_FFFC >= 0);
+   while(totalOrders >= 0);
 
   }
 
-//+------------------------------------------------------------------+
-//|                                                                  |
-//+------------------------------------------------------------------+
-void func_1154(int Fa_i_00, int Fa_i_01)
-  {
-   string tmp_str0000;
-   string tmp_str0001;
-   string tmp_str0002;
-   string tmp_str0003;
-   string tmp_str0004;
-   string tmp_str0005;
-   string tmp_str0006;
-   int Li_FFFC;
-   bool Lb_FFFB;
-   double Ld_FFF0;
 
-   Li_FFFC = 1;
+//+------------------------------------------------------------------+
+//|                Modify Orders To Breakeven                        |
+//+------------------------------------------------------------------+
+void modifyOrdersToBreakeven(int breakevenPips, int distanceFromOpenPips)
+  {
+   string errorMessage;
+   string orderMessage;
+   string symbolTimeframe;
+   string popupMessage;
+   string notificationMessage;
+   double newStopLoss;
+   int index = 1;
+   bool shouldMoveStopLoss;
+
    if(OrdersTotal() < 1)
       return;
+
    do
      {
-      if(OrderSelect((Li_FFFC - 1), 0, 0) == true && OrderMagicNumber() == Ii_0064 && OrderSymbol() == _Symbol)
+      if(OrderSelect((index - 1), 0, 0) == true && OrderMagicNumber() == orderResult && OrderSymbol() == _Symbol)
         {
          if(OrderType() == OP_BUY || OrderType() == OP_SELL)
            {
+            shouldMoveStopLoss = false;
+            newStopLoss = 0;
 
-            Lb_FFFB = false;
-            Ld_FFF0 = 0;
-            if(OrderType() == OP_BUY
-               && (OrderClosePrice() - OrderOpenPrice() >= NormalizeDouble((Fa_i_00 * _Point), _Digits)))
+            if(OrderType() == OP_BUY && (OrderClosePrice() - OrderOpenPrice() >= NormalizeDouble((breakevenPips * _Point), _Digits)))
               {
-               Gd_0002 = OrderOpenPrice();
-               Ld_FFF0 = NormalizeDouble((Gd_0002 + NormalizeDouble((Fa_i_01 * _Point), _Digits)), _Digits);
-               if(Ld_FFF0 > OrderStopLoss())
+               double openPrice = OrderOpenPrice();
+               newStopLoss = NormalizeDouble((openPrice + NormalizeDouble((distanceFromOpenPips * _Point), _Digits)), _Digits);
+
+               if(newStopLoss > OrderStopLoss())
                  {
-                  Lb_FFFB = true;
+                  shouldMoveStopLoss = true;
                  }
               }
             else
               {
                if(OrderType() == OP_SELL)
                  {
-                  Gd_0003 = OrderOpenPrice();
-                  Gd_0003 = (Gd_0003 - OrderClosePrice());
-                  if((Gd_0003 >= NormalizeDouble((Fa_i_00 * _Point), _Digits)))
-                    {
-                     Gd_0005 = OrderOpenPrice();
-                     Ld_FFF0 = NormalizeDouble((Gd_0005 - NormalizeDouble((Fa_i_01 * _Point), _Digits)), _Digits);
-                     if((OrderStopLoss() != 0) == false || (Ld_FFF0 >= OrderStopLoss()) == false)
-                       {
+                  double openPrice = OrderOpenPrice();
+                  double distance = (openPrice - OrderClosePrice());
 
-                        Lb_FFFB = true;
+                  if((distance >= NormalizeDouble((breakevenPips * _Point), _Digits)))
+                    {
+                     double entryPrice = OrderOpenPrice();
+                     newStopLoss = NormalizeDouble((entryPrice - NormalizeDouble((distanceFromOpenPips * _Point), _Digits)), _Digits);
+
+                     if((OrderStopLoss() != 0) == false || (newStopLoss >= OrderStopLoss()) == false)
+                       {
+                        shouldMoveStopLoss = true;
                        }
                     }
                  }
               }
-            if(Lb_FFFB)
+
+            if(shouldMoveStopLoss)
               {
-               Gd_0006 = NormalizeDouble(OrderStopLoss(), _Digits);
-               if((Gd_0006 == NormalizeDouble(Ld_FFF0, _Digits)) != true)
+               double stopLoss = NormalizeDouble(OrderStopLoss(), _Digits);
+
+               if((stopLoss == NormalizeDouble(newStopLoss, _Digits)) != true)
                  {
-                  if(!OrderModify(OrderTicket(), OrderOpenPrice(), Ld_FFF0, OrderTakeProfit(), OrderExpiration(), 4294967295))
+                  if(!OrderModify(OrderTicket(), OrderOpenPrice(), newStopLoss, OrderTakeProfit(), OrderExpiration(), 4294967295))
                     {
-                     tmp_str0000 = "Error modifying the order to breakeven with ticket " + IntegerToString(OrderTicket(), 0, 32);
-                     tmp_str0000 = tmp_str0000 + ". Error: ";
-                     tmp_str0000 = tmp_str0000 + ErrorDescription(GetLastError());
-                     tmp_str0001 = tmp_str0000;
-                     Is_0070 = tmp_str0000;
-                     tmp_str0003 = _Symbol + "(";
-                     tmp_str0003 = tmp_str0003 + getTimeframeString(_Period);
-                     tmp_str0003 = tmp_str0003 + ")";
-                     tmp_str0003 = tmp_str0003 + ": ";
-                     tmp_str0003 = tmp_str0003 + tmp_str0000;
-                     tmp_str0002 = tmp_str0003;
+                     errorMessage = "Error modifying the order to breakeven with ticket " + IntegerToString(OrderTicket(), 0, 32);
+                     errorMessage = errorMessage + ". Error: ";
+                     errorMessage = errorMessage + ErrorDescription(GetLastError());
+                     orderMessage = errorMessage;
+                     Is_0070 = errorMessage;
+                     symbolTimeframe = _Symbol + "(";
+                     symbolTimeframe = symbolTimeframe + getTimeframeString(_Period);
+                     symbolTimeframe = symbolTimeframe + ")";
+                     symbolTimeframe = symbolTimeframe + ": ";
+                     symbolTimeframe = symbolTimeframe + errorMessage;
+                     popupMessage = symbolTimeframe;
+
                      if(PopupAlert)
                        {
-                        Alert(tmp_str0002);
+                        Alert(popupMessage);
                        }
                      else
                        {
-                        Print(tmp_str0001);
+                        Print(orderMessage);
                        }
+
                      if(PushAlert)
                        {
-                        SendNotification(tmp_str0002);
+                        notificationMessage = popupMessage;
+                        SendNotification(notificationMessage);
                        }
+
                      if(EmailAlert != false)
                        {
-                        SendMail(tmp_str0002, tmp_str0001);
+                        SendMail(popupMessage, orderMessage);
                        }
                     }
                   else
                     {
-                     tmp_str0003 = "Breakeven StopLoss for order with ticket " + IntegerToString(OrderTicket(), 0, 32);
-                     tmp_str0003 = tmp_str0003 + ", breakeven ";
-                     Gi_0009 = _Digits;
-                     tmp_str0003 = tmp_str0003 + DoubleToString(NormalizeDouble(Ld_FFF0, Gi_0009), Gi_0009);
-                     tmp_str0003 = tmp_str0003 + ", quote ";
-                     Gi_0009 = _Digits;
-                     tmp_str0003 = tmp_str0003 + DoubleToString(NormalizeDouble(OrderClosePrice(), Gi_0009), Gi_0009);
-                     tmp_str0004 = tmp_str0003;
-                     Is_0070 = tmp_str0003;
-                     tmp_str0006 = _Symbol + "(";
-                     tmp_str0006 = tmp_str0006 + getTimeframeString(_Period);
-                     tmp_str0006 = tmp_str0006 + ")";
-                     tmp_str0006 = tmp_str0006 + ": ";
-                     tmp_str0006 = tmp_str0006 + tmp_str0003;
-                     tmp_str0005 = tmp_str0006;
+                     orderMessage = "Breakeven StopLoss for order with ticket " + IntegerToString(OrderTicket(), 0, 32);
+                     orderMessage = orderMessage + ", breakeven ";
+                     int digits = _Digits;
+                     double breakeven = NormalizeDouble(newStopLoss, digits);
+                     orderMessage = orderMessage + DoubleToString(breakeven, digits);
+                     orderMessage = orderMessage + ", quote ";
+                     digits = _Digits;
+                     double orderQuote = NormalizeDouble(OrderClosePrice(), digits);
+                     orderMessage = orderMessage + DoubleToString(orderQuote, digits);
+                     string messageSubject = _Symbol + "(";
+                     messageSubject = messageSubject + getTimeframeString(_Period);
+                     messageSubject = messageSubject + ")";
+                     messageSubject = messageSubject + ": ";
+                     messageSubject = messageSubject + orderMessage;
+                     string emailMessage = orderMessage;
                      if(PopupAlert)
                        {
-                        Alert(tmp_str0005);
+                        Alert(messageSubject);
                        }
                      else
                        {
-                        Print(tmp_str0004);
+                        Print(orderMessage);
                        }
                      if(PushAlert)
                        {
-                        SendNotification(tmp_str0005);
+                        SendNotification(messageSubject);
                        }
                      if(EmailAlert)
                        {
-                        SendMail(tmp_str0005, tmp_str0004);
+                        SendMail(messageSubject, emailMessage);
                        }
                     }
                  }
               }
            }
+         }
+         index = index + 1;
         }
-      Li_FFFC = Li_FFFC + 1;
+      while(index <= OrdersTotal());
      }
-   while(Li_FFFC <= OrdersTotal());
 
-  }
+//+------------------------------------------------------------------+
 
 //+------------------------------------------------------------------+
